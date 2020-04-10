@@ -1,0 +1,105 @@
+/* ABC fonts */
+@font-face {
+  font-family: "ABCSans Regular";
+  font-style: normal;
+  font-weight: normal;
+  src: local("ABCSans Regular"), url("./fonts/abcsans-regular.woff") format("woff");
+}
+@font-face {
+  font-family: "ABCSans Black";
+  font-style: normal;
+  font-weight: normal;
+  src: local("ABCSans Black"), url("./fonts/abcsans-black.woff") format("woff");
+}
+
+:root {
+  font-size: 1em;
+  font-family: "ABCSans Black", "Arial Black", sans-serif;
+}
+body {
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  position: fixed;
+  top: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+#map, #svg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+}
+#legend {
+  position: fixed;
+  width: 85%;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, .75);
+}
+#legend rect {
+  fill: url(#gradient);
+}
+#selector {
+  position: fixed;
+  display: flex;
+  font-family: "ABCSans Black", sans-serif;
+  text-align: center;
+  color: white;
+}
+#selector .option {
+  background-color: #1C1C1C;
+  padding: 5px;
+  width: 75px;
+}
+#selector .option:last-child {
+  margin-left: 2px;
+}
+#selector .option.selected {
+  background-color: #009CBF;
+}
+.area {
+  pointer-events: none;
+}
+.area.selected {
+  pointer-events: auto;
+}
+#axisGroup text {
+  font-size: .7rem;
+  fill: #1C1C1C;
+}
+#axisGroup line, #axisGroup path {
+  stroke: #1C1C1C;
+}
+#tip {
+  position: absolute;
+  opacity: 0;
+  text-align: center;
+  padding: 5px;
+  border-radius: 10px;
+  background-color: rgb(28, 28, 28, .8);
+  pointer-events: none;
+  color: white;
+}
+#tip p, #tip h1 {
+  margin: 0;
+  padding: 0;
+}
+#tip h1 {
+  font-size: .9rem;
+}
+#tip p {
+  font-family: "ABCSans Regular", sans-serif;
+  font-size: .8rem;
+}
+
+@media only screen and (min-width: 500px) {
+  #selector .option:hover {
+    background-color: #F75F00;
+  }
+}
