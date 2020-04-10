@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-155991615-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'UA-155991615-1');
+    </script>
+    <!-- my stuff -->
+    <meta charset="utf-8">
+    <title>COVID-19 in Canberra</title>
+    <meta name="description" content="Mapping the incidence of COVID-19 in Canberra's SA3 regions.">
+    <meta name="keywords" content="canberra, act, covid19, coronavirus, map">
+    <meta name="author" content="Markus Mannheim">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Initial scripts -->
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+    <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v1.5.0/mapbox-gl.js"></script>
+    <link href="https://api.tiles.mapbox.com/mapbox-gl-js/v1.5.0/mapbox-gl.css" rel="stylesheet">
+    <link href="./resources/style.css?v1.2" rel="stylesheet">
+    <link href="./resources/abcLogo64.png" rel="icon">
+  </head>
+  <body>
+    <!-- Initial page layout -->
+    <svg id="map">
+      <defs>
+        <linearGradient id="gradient" x1="0%" x2="100%" y1="0%" y2="0%">
+        </linearGradient>
+      </defs>
+      <g id="mapGroup"></g>
+      <g id="legend">
+        <text y="-10" id="legendLabel">infections per 100,000 people</text>
+        <rect height="32"></rect>
+        <g id="axisGroup"></g>
+      </g>
+    </svg>
+    <div id="title">COVID-19 in Canberra</div>
+    <script>
+      // load data
+      d3.queue()
+        .defer(d3.json, "./resources/mesh.topojson")
+        .defer(d3.json, "./resources/border.topojson")
+        .defer(d3.json, "./resources/sa3.topojson")
+        .defer(d3.csv, "./resources/data.csv")
+        .awaitAll(function(error, data) {
+          if (error) throw error;
+          meshData = topojson.feature(data[0], data[0].objects.tracts);
+          borderData = topojson.feature(data[1], data[1].objects.tracts);
+          sa3Data = topojson.feature(data[2], data[2].objects.tracts);
+          covidData = data[3];
+          covidData.forEach(function(d) {
+            d.cases = +d.cases;
+            d.population = +d.population;
+          });
+          covidCheck = covidData
+            .filter(function(d) { return d.cases > 0; })
+            .map(function(d) { return d.sa3; });
+          sa3Data.features = sa3Data.features
+            .filter(function(d) { return covidCheck.includes(d.properties.name); });
+          sa3Data.features
+            .forEach(function(d) {
+              let data = covidData
+                .filter(function(e) { return e.sa3 == d.properties.name; })[0];
+              d.properties.cases = data.cases;
+              d.properties.population = data.population;
+              d.properties.incidence = data.cases / data.population * 100000;
+            });
+          colours = d3.scaleLinear()
+            .range(["white", "#F75F00"])
+            .domain([0, d3.max(sa3Data.features, function(d) { return d.properties.incidence; })])
+            .interpolate(d3.interpolateRgb);
+          // elements
+          map = d3.select("#map");
+          mapGroup = d3.select("#mapGroup");
+          width = window.innerWidth;
+          height = window.innerHeight;
+          legend = d3.select("#legend");
+          legendLabel = d3.select("#legendLabel")
+            .attr("x", (width / 2 - 32) / 2);
+          gradient = d3.select("#gradient");
+          // legend
+          gradient.selectAll("stop")
+              .data(d3.range(0, 1.1, .1))
+            .enter().append("stop")
+              .attr("offset", function(d) { return d * 100 + "%"; })
+              .attr("style", function(d) { return "stop-color: " + colours(colours.domain()[1] * d) + "; stop-opacity: 1;"; });
+          x = d3.scaleLinear()
+            .range([0, width / 2 - 32])
+            .domain(colours.domain());
+          axis = d3.axisBottom(x)
+            .ticks(5, ".0f")
+            .tickSize(0)
+            .tickPadding(10);
+          axisGroup = d3.select("#axisGroup")
+            .attr("transform", "translate(0, 32)");
+            axisGroup.call(axis);
+          // map calculations
+          projection = d3.geoIdentity()
+            .fitExtent([[-32, 32], [width - 32, height - 32]], sa3Data);
+          path = d3.geoPath()
+            .projection(projection);
+          areas = mapGroup
+            .selectAll(".area")
+              .data(sa3Data.features)
+            .enter().append("path")
+              .classed("area", true)
+              .style("fill", function(d) { return colours(d.properties.incidence); })
+              .attr("d", path);
+          mesh = mapGroup
+            .selectAll(".mesh")
+            .data(meshData.features)
+          .enter().append("path")
+            .attr("class", function(d) { return d.properties.name; })
+            .classed("mesh", true)
+            .attr("d", path);
+          d3.select(".parkland")
+            .lower();
+          border = mapGroup
+            .append("path")
+              .classed("border", true)
+              .attr("d", path(borderData))
+              .lower();
+          legend.attr("transform", "translate(" + (width / 2) + ", " + (height - 80) + ")")
+            .select("rect")
+              .attr("width", width / 2 - 32);
+          labels = d3.select("body")
+            .selectAll(".label")
+              .data(sa3Data.features)
+            .enter().append("div")
+              .classed("label", true)
+              .html(function(d) { return "<span class='name'>" + d.properties.name + "</span>: <span class='case'>" + d.properties.cases + "</span> cases"; });
+          labels.style("left", function(d) { return (path.centroid(d)[0] - parseFloat(d3.select(this).style("width")) / 2) + "px"; })
+              .style("top", function(d) {
+                return d.properties.name == "Woden Valley" ?
+                  (path.centroid(d)[1] - parseFloat(d3.select(this).style("height")) / 2 + 16) + "px" :
+                  (path.centroid(d)[1] - parseFloat(d3.select(this).style("height")) / 2) + "px";
+              });
+        });
+    </script>
+  </body>
+</html>
